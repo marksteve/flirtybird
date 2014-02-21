@@ -107,7 +107,7 @@ function postScore() {
 function preload() {
     var assets = {
         spritesheet: {
-            bird: ['assets/bird.png', 24, 24],
+            bird: ['assets/bird.png', 48, 48],
             clouds: ['assets/clouds.png', 640, 320]
         },
         image: {
@@ -289,7 +289,6 @@ function reset() {
     bird.body.allowGravity = false;
     bird.angle = 0;
     bird.reset(game.world.width / 4, game.world.height / 2);
-    bird.scale.setTo(2, 2);
     bird.animations.play('fly');
     towers.removeAll();
     invs.removeAll();
@@ -313,10 +312,7 @@ function flap() {
     if (!gameStarted) {
         start();
     }
-    if (!gameOver) {
-        bird.body.velocity.y = -FLAP;
-        flapSnd.play();
-    } else {
+    if (gameOver) {
         // Check if the touch event is within our text for posting a score
         if (postScoreClickArea && Phaser.Rectangle.contains(postScoreClickArea, game.input.x, game.input.y)) {
             postScore();
@@ -324,7 +320,12 @@ function flap() {
         // Check if the touch event is within our text for sending a kik message
         else if (Clay.Environment.platform == 'kik' && kikThisClickArea && Phaser.Rectangle.contains(kikThisClickArea, game.input.x, game.input.y)) {
             kikThis();
+        } else {
+            reset();
         }
+    } else {
+        bird.body.velocity.y = -FLAP;
+        flapSnd.play();
     }
 }
 
@@ -423,8 +424,6 @@ function setGameOver() {
     });
     // Stop spawning towers
     towersTimer.stop();
-    // Make bird reset the game
-    bird.events.onInputDown.addOnce(reset);
     hurtSnd.play();
 }
 
@@ -449,12 +448,6 @@ function update() {
         }
         // bird is DEAD!
         if (gameOver) {
-            if (bird.scale.x < 4) {
-                bird.scale.setTo(
-                    bird.scale.x * 1.2,
-                    bird.scale.y * 1.2
-                );
-            }
             highScoreText.scale.setTo(
                 0.9 + 0.1 * Math.sin(game.time.now / 100),
                 0.9 + 0.1 * Math.cos(game.time.now / 100)
