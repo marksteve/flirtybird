@@ -81,7 +81,7 @@ function postScore() {
     postingScore = true;
     
     var post = function() {
-    	if(!leaderboard) return;
+        if(!leaderboard) return;
         leaderboard.post({ score: score }, function() {
             showScores();
             postScoreText.setText('Post Score!');
@@ -90,21 +90,39 @@ function postScore() {
     }
     
     if (Clay.Environment.platform == 'kik') {
-	    Clay.Kik.connect({}, function(response) {
-	        if (response.success) {
-	            Clay.Player.onUserReady( post );
-	        } else {
+        Clay.Kik.connect({}, function(response) {
+            if (response.success) {
+                Clay.Player.onUserReady( post );
+            } else {
                 postScoreText.setText('Post Score!');
-	            postingScore = false;
-	        }
-	    });
+                postingScore = false;
+            }
+        });
     } else {
-    	post();
+        post();
     }
-    	
+        
 }
 
 function preload() {
+    bg = game.add.graphics(0, 0);
+    bg.beginFill(0xCCEEFF, 1);
+    bg.drawRect(0, 0, game.world.width, game.world.height);
+    bg.endFill();
+    
+    // Ghetto load bar. Better implementation would be something like http://www.photonstorm.com/phaser/advanced-phaser-and-typescript-projects
+    var loadBar = game.add.graphics(0, 0);
+    var loadInterval = setInterval(function() {
+        loadBar.beginFill(0xFF00B4, 1);
+        var width = ( game.load.progress / 100 ) * game.world.width
+        loadBar.drawRect(0, 0, width, game.world.height);
+        loadBar.endFill();
+        if(game.load.hasLoaded) {
+            clearInterval(loadInterval);
+            loadBar.destroy();
+        }
+    }, 100);
+    
     var assets = {
         spritesheet: {
             bird: ['assets/bird.png', 48, 48],
@@ -138,6 +156,7 @@ var gameStarted,
     floor,
     scoreText,
     instText,
+    instTextClickArea,
     highScoreText,
     kikThisText,
     kikThisClickArea,
@@ -151,7 +170,7 @@ var gameStarted,
     cloudsTimer;
 
 function create() {
-    game.stage.scaleMode = Phaser.StageScaleMode.SHOW_ALL;
+    game.stage.scaleMode = Phaser.StageScaleMode.EXACT_FIT;
     game.stage.scale.setScreenSize(true);
     // Draw bg
     bg = game.add.graphics(0, 0);
@@ -182,26 +201,28 @@ function create() {
         {
             font: '32px "Purple Purse"',
             fill: '#fff',
-            stroke: '#9cf',
+            stroke: '#51A7FC',
             strokeThickness: 4,
             align: 'center'
         }
     );
     scoreText.anchor.setTo(0.5, 0.5);
+    
     // Add instructions text
     instText = game.add.text(
         game.world.width / 2,
         game.world.height - game.world.height / 4,
         "",
         {
-            font: '20px "Purple Purse"',
+            font: '22px "Purple Purse"',
             fill: '#fff',
-            stroke: '#9cf',
+            stroke: '#51A7FC',
             strokeThickness: 4,
             align: 'center'
         }
     );
     instText.anchor.setTo(0.5, 0.5);
+    
     // Add game over text
     highScoreText = game.add.text(
         game.world.width / 2,
@@ -210,21 +231,22 @@ function create() {
         {
             font: '30px "Purple Purse"',
             fill: '#fff',
-            stroke: '#9cf',
+            stroke: '#51A7FC',
             strokeThickness: 4,
             align: 'center'
         }
     );
     highScoreText.anchor.setTo(0.5, 0.5);
+    
     // Add kik this text (hidden until game is over)
     postScoreText = game.add.text(
         game.world.width / (Clay.Environment.platform == 'kik' ?  4 : 2),
         game.world.height / 2,
         "",
         {
-            font: '20px "Purple Purse"',
+            font: '22px "Purple Purse"',
             fill: '#fff',
-            stroke: '#9cf',
+            stroke: '#51A7FC',
             strokeThickness: 4,
             align: 'center'
         }
@@ -232,22 +254,16 @@ function create() {
     postScoreText.setText('Post Score!');
     postScoreText.anchor.setTo(0.5, 0.5);
     postScoreText.renderable = false;
-    // So we can have clickable text... we check if the mousedown/touch event is within this rectangle inside flap()
-    postScoreClickArea = new Phaser.Rectangle(
-        postScoreText.x - postScoreText.width / 2,
-        postScoreText.y - postScoreText.height / 2,
-        postScoreText.width,
-        postScoreText.height
-    );
+    
     // Add kik this text (hidden until game is over)
     kikThisText = game.add.text(
         3 * game.world.width / 4,
         game.world.height / 2,
         "",
         {
-            font: '20px "Purple Purse"',
+            font: '22px "Purple Purse"',
             fill: '#fff',
-            stroke: '#9cf',
+            stroke: '#51A7FC',
             strokeThickness: 4,
             align: 'center'
         }
@@ -255,13 +271,7 @@ function create() {
     kikThisText.setText("Kik This!");
     kikThisText.anchor.setTo(0.5, 0.5);
     kikThisText.renderable = false;
-    // So we can have clickable text... we check if the mousedown/touch event is within this rectangle inside flap()
-    kikThisClickArea = new Phaser.Rectangle(
-        kikThisText.x - kikThisText.width / 2,
-        kikThisText.y - kikThisText.height / 2,
-        kikThisText.width,
-        kikThisText.height
-    );
+    
     // Add sounds
     flapSnd = game.add.audio('flap');
     scoreSnd = game.add.audio('score');
@@ -320,7 +330,7 @@ function flap() {
         // Check if the touch event is within our text for sending a kik message
         else if (Clay.Environment.platform == 'kik' && kikThisClickArea && Phaser.Rectangle.contains(kikThisClickArea, game.input.x, game.input.y)) {
             kikThis();
-        } else {
+        } else if (instTextClickArea && Phaser.Rectangle.contains(instTextClickArea, game.input.x, game.input.y)) {
             reset();
         }
     } else {
@@ -401,8 +411,19 @@ function addScore(_, inv) {
 
 function setGameOver() {
     gameOver = true;
-    instText.setText("Touch to try again");
+    instText.setText("Touch here to try again");
     instText.renderable = true;
+    
+    if(!instTextClickArea) {
+        // So we can have clickable text for game over... we check if the mousedown/touch event is within this rectangle inside flap()
+        instTextClickArea = new Phaser.Rectangle(
+            instText.x - instText.width / 2,
+            instText.y - instText.height / 2,
+            instText.width,
+            instText.height * 2 // make the click box a bit larger than the text
+        );
+    }
+    
     var hiscore = window.localStorage.getItem('hiscore');
     hiscore = hiscore ? hiscore : score;
     hiscore = score > parseInt(hiscore, 10) ? score : hiscore;
@@ -410,9 +431,29 @@ function setGameOver() {
     highScoreText.setText("High Score\n" + hiscore);
     highScoreText.renderable = true;
     
+    if(!postScoreClickArea) {
+        // So we can have clickable text... we check if the mousedown/touch event is within this rectangle inside flap()
+        postScoreClickArea = new Phaser.Rectangle(
+            postScoreText.x - postScoreText.width / 2,
+            postScoreText.y - postScoreText.height / 2,
+            postScoreText.width,
+            postScoreText.height * 1.5 // make the click box a bit larger than the text
+        );
+    }
+    
     postScoreText.renderable = true;
     if (Clay.Environment.platform == 'kik') {
         kikThisText.renderable = true;
+    }
+    
+    if(!kikThisClickArea) {
+        // So we can have clickable text... we check if the mousedown/touch event is within this rectangle inside flap()
+        kikThisClickArea = new Phaser.Rectangle(
+            kikThisText.x - kikThisText.width / 2,
+            kikThisText.y - kikThisText.height / 2,
+            kikThisText.width,
+            kikThisText.height * 1.5 // make the click box a bit larger than the text
+        );
     }
     
     // Stop all towers
@@ -449,16 +490,16 @@ function update() {
         // bird is DEAD!
         if (gameOver) {
             highScoreText.scale.setTo(
-                0.9 + 0.1 * Math.sin(game.time.now / 100),
-                0.9 + 0.1 * Math.cos(game.time.now / 100)
+                1 + 0.05 * Math.sin(game.time.now / 100),
+                1 + 0.05 * Math.cos(game.time.now / 100)
             );
             postScoreText.scale.setTo(
-                0.9 + 0.1 * Math.sin(game.time.now / 100),
-                0.9 + 0.1 * Math.cos(game.time.now / 100)
+                1 + 0.05 * Math.sin(game.time.now / 100),
+                1 + 0.05 * Math.cos(game.time.now / 100)
             );
             kikThisText.scale.setTo(
-                0.9 + 0.1 * Math.sin(game.time.now / 100),
-                0.9 + 0.1 * Math.cos(game.time.now / 100)
+                1 + 0.05 * Math.sin(game.time.now / 100),
+                1 + 0.05 * Math.cos(game.time.now / 100)
             );
         } else {
             // Check game over
@@ -483,14 +524,14 @@ function update() {
     if (!gameStarted || gameOver) {
         // Shake instructions text
         instText.scale.setTo(
-            0.9 + 0.1 * Math.sin(game.time.now / 100),
-            0.9 + 0.1 * Math.cos(game.time.now / 100)
+            0.9 + 0.05 * Math.sin(game.time.now / 100),
+            0.9 + 0.05 * Math.cos(game.time.now / 100)
         );
     }
     // Shake score text
     scoreText.scale.setTo(
-        0.9 + 0.1 * Math.cos(game.time.now / 100),
-        0.9 + 0.1 * Math.sin(game.time.now / 100)
+        0.9 + 0.05 * Math.cos(game.time.now / 100),
+        0.9 + 0.05 * Math.sin(game.time.now / 100)
     );
     // Update clouds timer
     cloudsTimer.update();
