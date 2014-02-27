@@ -3,7 +3,7 @@ var SPEED = 180;
 var GRAVITY = 18;
 var FLAP = 420;
 var SPAWN_RATE = 1 / 1.2;
-var OPENING = 144;
+var OPENING = 120;
 
 // Load in Clay.io API
 var Clay = Clay || {};
@@ -31,6 +31,8 @@ Clay.ready = function( fn ) {
     clay.src = "http://cdn.clay.io/api.js"; 
     var tag = document.getElementsByTagName("script")[0]; tag.parentNode.insertBefore(clay, tag);
 } )();
+if(typeof cards !== 'undefined')
+    cards.metrics.enableGoogleAnalytics( 'UA-27992080-1', '.clay.io', true )
 
 function main() {
 
@@ -263,7 +265,7 @@ function create() {
         {
             font: '22px "Purple Purse"',
             fill: '#fff',
-            stroke: '#51A7FC',
+            stroke: '#34C400',
             strokeThickness: 4,
             align: 'center'
         }
@@ -373,7 +375,7 @@ function spawnTower(towerY, flipped) {
     tower.body.allowGravity = false;
 
     // Flip tower! *GASP*
-    tower.scale.y = flipped ? -1 : 1;
+    tower.scale.setTo(2, flipped ? -2 : 2);
     tower.body.offset.y = flipped ? -tower.body.height * 2 : 0;
 
     // Move to the left
